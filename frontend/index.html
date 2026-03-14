@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spendly</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Spendly</h1>
+
+    <form id="expense-form">
+        <input type="text" id="title" placeholder="Expense Title" required>
+        <input type="number" id="amount" placeholder="Amount" required>
+        <select id="category" required>
+            <option value="">Select Category</option>
+            <option value="Rent">Rent</option>
+            <option value="Utilities">Utilities</option>
+            <option value="Groceries">Groceries</option>
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Misc">Misc</option>
+        </select>
+        <input type="date" id="date" required>
+        <button type="submit">Add Expense</button>
+    </form>
+
+    <h2>Expenses</h2>
+    <ul id="expense-list"></ul>
+
+    <h2>AI Chatbot</h2>
+    <div id="chatbot">
+        <input type="text" id="chat-input" placeholder="Ask about your expenses...">
+        <button id="chat-submit">Send</button>
+        <div id="chat-output"></div>
+    </div>
+
+    <script src="script.js" defer></script>
+</body>
+</html>
