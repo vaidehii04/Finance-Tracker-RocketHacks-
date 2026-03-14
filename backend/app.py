@@ -1,9 +1,50 @@
 from flask import Flask, request, jsonify
 import sqlite3
 from flask_cors import CORS
+from openai import OpenAI
 
 app = Flask(__name__)
 CORS(app)  # lets your frontend talk to backend if they're on different ports
+client = OpenAI() #chatbot client 
+@app.route("/chat", methods=["POST"])
+def chat():
+    data = request.get_json()
+    question = data.get("question")
+
+    if not question:
+        return jsonify({"error": "Question is required"}), 400
+
+    # pull expense data
+    conn = get_db_connection()
+    expenses = conn.execute("SELECT title, amount, category, date FROM expenses").fetchall()
+    conn.close()
+
+    expense_text = "\n".join(
+        [f"{e['title']} - ${e['amount']} ({e['category']}) on {e['date']}" for e in expenses]
+    )
+
+    prompt = f"""
+You are a helpful financial assistant for a student expense tracker.
+
+Here are the user's expenses:
+
+{expense_text}
+
+User question:
+{question}
+
+Give helpful budgeting advice based on their spending.
+"""
+
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=prompt
+    )
+
+    answer = response.output_text
+
+    return jsonify({"response": answer})
+
 
 DATABASE = "expenses.db"
 
