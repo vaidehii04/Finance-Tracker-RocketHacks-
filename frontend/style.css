@@ -1,10 +1,11 @@
-body {
+  body {
     margin: 0;
     font-family: 'Poppins', sans-serif;
     background: #f5f5f5;
     color: #333;
 }
 
+/* Container for each page */
 .container {
     max-width: 500px;
     margin: 50px auto;
@@ -14,11 +15,13 @@ body {
     box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
 
+/* Headings */
 h1, h2 {
     text-align: center;
     color: #800000; /* Maroon */
 }
 
+/* Inputs and buttons */
 input, button, select {
     width: 100%;
     padding: 12px;
@@ -26,6 +29,7 @@ input, button, select {
     border-radius: 8px;
     border: 1px solid #ccc;
     font-size: 16px;
+    box-sizing: border-box;
 }
 
 input:focus, select:focus {
@@ -34,6 +38,7 @@ input:focus, select:focus {
     box-shadow: 0 0 5px rgba(128,0,0,0.5);
 }
 
+/* Buttons */
 button {
     background-color: #800000;
     color: white;
@@ -47,10 +52,12 @@ button:hover {
     background-color: #a00000;
 }
 
+/* Hide elements */
 .hidden {
     display: none;
 }
 
+/* Expense items */
 .expense-item {
     display: flex;
     justify-content: space-between;
@@ -62,6 +69,7 @@ button:hover {
     border-bottom: none;
 }
 
+/* Total summary */
 .total {
     font-weight: 600;
     font-size: 18px;
@@ -70,20 +78,43 @@ button:hover {
     color: #800000;
 }
 
-.ai-box{
-    margin-top:25px;
-    padding:20px;
-    border-radius:10px;
-    background:#fafafa;
-    border:1px solid #ddd;
+/* AI box styles */
+.ai-box {
+    margin-top: 25px;
+    padding: 20px;
+    border-radius: 10px;
+    background: #fafafa;
+    border: 1px solid #ddd;
 }
 
-#chat-output{
-    height:120px;
-    overflow-y:auto;
-    background:white;
-    padding:10px;
-    border-radius:8px;
-    border:1px solid #ccc;
-    margin-bottom:10px;
+.ai-box h3 {
+    color: #0077CC; /* Blue for AI heading */
+    text-align: center;
+}
+
+#chat-output {
+    height: 120px;
+    overflow-y: auto;
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+}
+
+/* Chart styling */
+#expenseChart {
+    margin-top: 20px;
+    border-radius: 10px;
+    background: #fff;
+    padding: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 550px) {
+    .container {
+        padding: 20px;
+        margin: 20px;
+    }
 }
