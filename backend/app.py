@@ -3,6 +3,7 @@ from flask_cors import CORS
 from openai import OpenAI
 import sqlite3
 import os
+print("KEY:", os.environ.get("OPENAI_API_KEY"))
 
 app = Flask(__name__)
 CORS(app)
