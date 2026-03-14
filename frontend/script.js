@@ -1,61 +1,81 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const expenseForm = document.getElementById("expense-form");
-    const expenseList = document.getElementById("expense-list");
+let roommateCount = 1;
+let expenses = [];
 
-    // Function to fetch and display all expenses
-    async function loadExpenses() {
-        try {
-            const response = await fetch("http://127.0.0.1:5000/expenses");
-            const data = await response.json();
+// Page elements
+const page1 = document.getElementById('page1');
+const page2 = document.getElementById('page2');
+const page3 = document.getElementById('page3');
 
-            // Clear current list
-            expenseList.innerHTML = "";
+const page1Next = document.getElementById('page1-next');
+const page2Next = document.getElementById('page2-next');
+const addExpenseBtn = document.getElementById('add-expense');
 
-            // Display each expense
-            data.forEach(expense => {
-                const li = document.createElement("li");
-                li.textContent = `${expense.date} - ${expense.title}: $${expense.amount} (${expense.category})`;
-                expenseList.appendChild(li);
-            });
-        } catch (err) {
-            console.error("Error fetching expenses:", err);
-        }
+const expenseList = document.getElementById('expense-list');
+const summaryList = document.getElementById('summary-list');
+const splitTotal = document.getElementById('split-total');
+
+// Move from Page 1 to Page 2
+page1Next.addEventListener('click', () => {
+    const count = parseInt(document.getElementById('roommate-count').value);
+    if (count > 0) {
+        roommateCount = count;
+        page1.classList.add('hidden');
+        page2.classList.remove('hidden');
+    } else {
+        alert('Please enter a valid number of roommates.');
+    }
+});
+
+// Add expense dynamically
+addExpenseBtn.addEventListener('click', () => {
+    const title = document.getElementById('expense-title').value;
+    const amount = parseFloat(document.getElementById('expense-amount').value);
+    const date = document.getElementById('expense-date').value;
+
+    if (!title || isNaN(amount) || !date) {
+        alert('Please fill all fields correctly.');
+        return;
     }
 
-    // Handle form submission
-    expenseForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
+    expenses.push({ title, amount, date });
+    document.getElementById('expense-title').value = '';
+    document.getElementById('expense-amount').value = '';
+    document.getElementById('expense-date').value = '';
 
-        const title = document.getElementById("title").value;
-        const amount = document.getElementById("amount").value;
-        const category = document.getElementById("category").value;
-        const date = document.getElementById("date").value;
-
-        const expenseData = { title, amount, category, date };
-
-        try {
-            const response = await fetch("http://127.0.0.1:5000/add-expense", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(expenseData)
-            });
-
-            if (response.ok) {
-                // Clear form
-                expenseForm.reset();
-                // Reload expense list
-                loadExpenses();
-            } else {
-                const error = await response.json();
-                alert("Error: " + error.error);
-            }
-        } catch (err) {
-            console.error("Error adding expense:", err);
-        }
-    });
-
-    // Initial load
-    loadExpenses();
+    renderExpenses();
 });
+
+function renderExpenses() {
+    expenseList.innerHTML = '';
+    expenses.forEach(exp => {
+        const li = document.createElement('li');
+        li.classList.add('expense-item');
+        li.textContent = `${exp.date} - ${exp.title}: $${exp.amount.toFixed(2)}`;
+        expenseList.appendChild(li);
+    });
+}
+
+// Move to summary page
+page2Next.addEventListener('click', () => {
+    if (expenses.length === 0) {
+        alert('Please add at least one expense.');
+        return;
+    }
+    page2.classList.add('hidden');
+    page3.classList.remove('hidden');
+    renderSummary();
+});
+
+function renderSummary() {
+    summaryList.innerHTML = '';
+    let total = 0;
+    expenses.forEach(exp => {
+        total += exp.amount;
+        const div = document.createElement('div');
+        div.classList.add('expense-item');
+        div.textContent = `${exp.date} - ${exp.title}: $${exp.amount.toFixed(2)}`;
+        summaryList.appendChild(div);
+    });
+    const split = total / roommateCount;
+    splitTotal.textContent = `Total per roommate: $${split.toFixed(2)}`;
+}

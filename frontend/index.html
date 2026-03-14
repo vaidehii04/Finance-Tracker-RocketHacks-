@@ -3,36 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spendly</title>
+    <title>Spendly Roommate Tracker</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <h1>Spendly</h1>
 
-    <form id="expense-form">
-        <input type="text" id="title" placeholder="Expense Title" required>
-        <input type="number" id="amount" placeholder="Amount" required>
-        <select id="category" required>
-            <option value="">Select Category</option>
-            <option value="Rent">Rent</option>
-            <option value="Utilities">Utilities</option>
-            <option value="Groceries">Groceries</option>
-            <option value="Food">Food</option>
-            <option value="Transport">Transport</option>
-            <option value="Misc">Misc</option>
-        </select>
-        <input type="date" id="date" required>
-        <button type="submit">Add Expense</button>
-    </form>
+    <!-- Page 1: Roommates -->
+    <div class="container" id="page1">
+        <h1>Spendly</h1>
+        <h2>How many roommates?</h2>
+        <input type="number" id="roommate-count" min="1" placeholder="Enter number of roommates">
+        <button id="page1-next">Next</button>
+    </div>
 
-    <h2>Expenses</h2>
-    <ul id="expense-list"></ul>
+    <!-- Page 2: Add Expenses -->
+    <div class="container hidden" id="page2">
+        <h2>Add Expenses</h2>
+        <input type="text" id="expense-title" placeholder="Expense Name">
+        <input type="number" id="expense-amount" placeholder="Amount">
+        <input type="text" id="expense-date" placeholder="Date (MM/DD)">
+        <button id="add-expense">Add Expense</button>
+        <ul id="expense-list"></ul>
+        <button id="page2-next">Next</button>
+    </div>
 
-    <h2>AI Chatbot</h2>
-    <div id="chatbot">
-        <input type="text" id="chat-input" placeholder="Ask about your expenses...">
-        <button id="chat-submit">Send</button>
-        <div id="chat-output"></div>
+    <!-- Page 3: Summary -->
+    <div class="container hidden" id="page3">
+        <h2>Summary</h2>
+        <div id="summary-list"></div>
+        <div class="total" id="split-total"></div>
     </div>
 
     <script src="script.js" defer></script>
