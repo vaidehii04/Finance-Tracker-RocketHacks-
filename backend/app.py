@@ -13,6 +13,11 @@ def chat():
 
     if not question:
         return jsonify({"error": "Question is required"}), 400
+   
+    @app.route("/chat-test", methods=["GET"])
+def chat_test():
+    return jsonify({"message": "Chat route is available. Use POST for /chat"})
+
 
     # pull expense data
     conn = get_db_connection()
@@ -47,6 +52,7 @@ Give helpful budgeting advice based on their spending.
 
 
 DATABASE = "expenses.db"
+
 
 
 def get_db_connection():
