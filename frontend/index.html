@@ -6,6 +6,7 @@
     <title>Spendly Roommate Tracker</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -20,12 +21,26 @@
     <!-- Page 2: Add Expenses -->
     <div class="container hidden" id="page2">
         <h2>Add Expenses</h2>
-        <input type="text" id="expense-title" placeholder="Expense Name">
+
+        <input type="text" id="expense-title" placeholder="Expense Category">
         <input type="number" id="expense-amount" placeholder="Amount">
         <input type="text" id="expense-date" placeholder="Date (MM/DD)">
+        <input type="text" id="paid-by" placeholder="Who paid? (Name)">
+
         <button id="add-expense">Add Expense</button>
+
         <ul id="expense-list"></ul>
+
         <button id="page2-next">Next</button>
+        <button id="back-to-page1">Back</button>
+
+        <!-- AI BOX -->
+        <div class="ai-box">
+            <h3>Spendly AI Assistant</h3>
+            <div id="chat-output"></div>
+            <input type="text" id="chat-input" placeholder="Ask about your expenses...">
+            <button id="chat-send">Ask AI</button>
+        </div>
     </div>
 
     <!-- Page 3: Summary -->
@@ -33,6 +48,8 @@
         <h2>Summary</h2>
         <div id="summary-list"></div>
         <div class="total" id="split-total"></div>
+        <canvas id="expenseChart"></canvas>
+        <button id="back-to-page2">Back</button>
     </div>
 
     <script src="script.js" defer></script>
