@@ -74,6 +74,54 @@ def add_expense():
     conn.close()
 
     return jsonify({"message": "Expense added successfully"}), 201
+@app.route("/summary", methods=["GET"])
+def get_summary():
+    conn = get_db_connection()
+
+    total_result = conn.execute(
+        "SELECT SUM(amount) AS total FROM expenses"
+    ).fetchone()
+
+    category_result = conn.execute("""
+        SELECT category, SUM(amount) AS total
+        FROM expenses
+        GROUP BY category
+        ORDER BY total DESC
+    """).fetchall()
+
+    conn.close()
+
+    total_spent = total_result["total"] if total_result["total"] is not None else 0
+
+    by_category = []
+    for row in category_result:
+        by_category.append({
+            "category": row["category"],
+            "total": row["total"]
+        })
+
+    return jsonify({
+        "total_spent": total_spent,
+        "by_category": by_category
+    }), 200
+@app.route("/delete-expense/<int:expense_id>", methods=["DELETE"])
+def delete_expense(expense_id):
+    conn = get_db_connection()
+
+    expense = conn.execute(
+        "SELECT * FROM expenses WHERE id = ?",
+        (expense_id,)
+    ).fetchone()
+
+    if expense is None:
+        conn.close()
+        return jsonify({"error": "Expense not found"}), 404
+
+    conn.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Expense deleted successfully"}), 200
 
 
 if __name__ == "__main__":
