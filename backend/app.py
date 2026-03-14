@@ -1,63 +1,19 @@
 from flask import Flask, request, jsonify
-import sqlite3
 from flask_cors import CORS
 from openai import OpenAI
+import sqlite3
+import os
 
 app = Flask(__name__)
-CORS(app)  # lets your frontend talk to backend if they're on different ports
-client = OpenAI() #chatbot client 
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.get_json()
-    question = data.get("question")
-
-    if not question:
-        return jsonify({"error": "Question is required"}), 400
-   
-    @app.route("/chat-test", methods=["GET"])
-def chat_test():
-    return jsonify({"message": "Chat route is available. Use POST for /chat"})
-
-
-    # pull expense data
-    conn = get_db_connection()
-    expenses = conn.execute("SELECT title, amount, category, date FROM expenses").fetchall()
-    conn.close()
-
-    expense_text = "\n".join(
-        [f"{e['title']} - ${e['amount']} ({e['category']}) on {e['date']}" for e in expenses]
-    )
-
-    prompt = f"""
-You are a helpful financial assistant for a student expense tracker.
-
-Here are the user's expenses:
-
-{expense_text}
-
-User question:
-{question}
-
-Give helpful budgeting advice based on their spending.
-"""
-
-    response = client.responses.create(
-        model="gpt-4.1-mini",
-        input=prompt
-    )
-
-    answer = response.output_text
-
-    return jsonify({"response": answer})
-
+CORS(app)
 
 DATABASE = "expenses.db"
-
+client = OpenAI()  # reads OPENAI_API_KEY from environment variable
 
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row  # lets rows act like dictionaries
+    conn.row_factory = sqlite3.Row
     return conn
 
 
@@ -79,15 +35,17 @@ def init_db():
     conn.close()
 
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def home():
-    return jsonify({"message": "Expense Tracker API is running"})
+    return jsonify({"message": "Expense Tracker API is running"}), 200
 
 
 @app.route("/expenses", methods=["GET"])
 def get_expenses():
     conn = get_db_connection()
-    expenses = conn.execute("SELECT * FROM expenses ORDER BY date DESC").fetchall()
+    expenses = conn.execute(
+        "SELECT * FROM expenses ORDER BY date DESC, id DESC"
+    ).fetchall()
     conn.close()
 
     expense_list = [dict(expense) for expense in expenses]
@@ -98,19 +56,21 @@ def get_expenses():
 def add_expense():
     data = request.get_json()
 
+    if not data:
+        return jsonify({"error": "Request body must be JSON"}), 400
+
     title = data.get("title")
     amount = data.get("amount")
     category = data.get("category")
     date = data.get("date")
 
-    # basic validation
     if not title or amount is None or not category or not date:
         return jsonify({"error": "Missing required fields"}), 400
 
     try:
         amount = float(amount)
-    except ValueError:
-        return jsonify({"error": "Amount must be a number"}), 400
+    except (ValueError, TypeError):
+        return jsonify({"error": "Amount must be a valid number"}), 400
 
     conn = get_db_connection()
     conn.execute(
@@ -121,6 +81,8 @@ def add_expense():
     conn.close()
 
     return jsonify({"message": "Expense added successfully"}), 201
+
+
 @app.route("/summary", methods=["GET"])
 def get_summary():
     conn = get_db_connection()
@@ -140,17 +102,20 @@ def get_summary():
 
     total_spent = total_result["total"] if total_result["total"] is not None else 0
 
-    by_category = []
-    for row in category_result:
-        by_category.append({
+    by_category = [
+        {
             "category": row["category"],
             "total": row["total"]
-        })
+        }
+        for row in category_result
+    ]
 
     return jsonify({
         "total_spent": total_spent,
         "by_category": by_category
     }), 200
+
+
 @app.route("/delete-expense/<int:expense_id>", methods=["DELETE"])
 def delete_expense(expense_id):
     conn = get_db_connection()
@@ -169,6 +134,67 @@ def delete_expense(expense_id):
     conn.close()
 
     return jsonify({"message": "Expense deleted successfully"}), 200
+
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({"error": "Request body must be JSON"}), 400
+
+        question = data.get("question")
+
+        if not question:
+            return jsonify({"error": "Question is required"}), 400
+
+        conn = get_db_connection()
+        expenses = conn.execute(
+            "SELECT title, amount, category, date FROM expenses ORDER BY date DESC, id DESC"
+        ).fetchall()
+        conn.close()
+
+        if not expenses:
+            return jsonify({
+                "response": "There are no expenses saved yet. Add some expenses first so I can analyze them."
+            }), 200
+
+        expense_text = "\n".join(
+            [
+                f"{expense['title']} - ${expense['amount']} ({expense['category']}) on {expense['date']}"
+                for expense in expenses
+            ]
+        )
+
+        prompt = f"""
+You are a helpful budgeting assistant for a student expense tracker app.
+
+Use only the expense data below to answer the user's question.
+Keep your answer concise, practical, and easy to understand.
+If relevant, point out the largest spending categories and suggest realistic ways to save money.
+
+Expense data:
+{expense_text}
+
+User question:
+{question}
+"""
+
+        response = client.responses.create(
+            model="gpt-4.1-mini",
+            input=prompt
+        )
+
+        answer = response.output_text
+
+        return jsonify({"response": answer}), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": "Chat request failed",
+            "details": str(e)
+        }), 500
 
 
 if __name__ == "__main__":
