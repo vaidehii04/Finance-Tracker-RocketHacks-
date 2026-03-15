@@ -1,10 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import json
-import os
 import sqlite3
-import urllib.error
-import urllib.request
 
 app = Flask(__name__)
 CORS(app)
@@ -32,127 +28,237 @@ def init_db():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS budget (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            monthly_budget REAL NOT NULL
+        )
+    """)
+
     conn.commit()
     conn.close()
 
 
-def build_fallback_advice(prompt, context):
-    total_spent = context.get("total_spent", 0)
-    by_category = context.get("by_category", [])
-    roommates = context.get("roommates", [])
-
-    top_category_text = ""
-    if by_category:
-        top_category = sorted(
-            by_category,
-            key=lambda item: item.get("total", 0),
-            reverse=True
-        )[0]
-        top_category_text = (
-            f" Your top category is {top_category.get('category', 'Unknown')} "
-            f"at about ${float(top_category.get('total', 0)):.2f}."
-        )
-
-    roommate_text = ""
-    if roommates:
-        each_share = total_spent / len(roommates) if len(roommates) > 0 else 0
-        roommate_text = (
-            f" With {len(roommates)} roommates, an even split is around "
-            f"${each_share:.2f} per person."
-        )
-
-    lower_prompt = prompt.lower()
-
-    if "save" in lower_prompt or "saving" in lower_prompt:
-        action_tip = (
-            "Try the 24-hour rule for non-essential purchases and move a small "
-            "fixed amount to savings each week."
-        )
-    elif "food" in lower_prompt or "groceries" in lower_prompt or "eat" in lower_prompt:
-        action_tip = (
-            "Use a weekly food cap and meal prep 2-3 staple meals to avoid "
-            "expensive last-minute orders."
-        )
-    elif "budget" in lower_prompt:
-        action_tip = (
-            "Use a simple split: 50% needs, 30% wants, 20% savings/debt, then "
-            "adjust based on your rent and tuition."
-        )
-    else:
-        action_tip = (
-            "Review your top spending category first and cap it by 10% this month "
-            "for a realistic improvement."
-        )
-
-    return (
-        f"Based on your current tracked spend of about ${float(total_spent):.2f}."
-        f"{top_category_text}{roommate_text} {action_tip}"
-    )
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"message": "Expense Tracker API is running"}), 200
 
 
-def ask_openai(prompt, context):
-    api_key = os.getenv("OPENAI_API_KEY")
+@app.route("/add-expense", methods=["POST"])
+def add_expense():
+    data = request.get_json()
 
-    if not api_key:
-        return None
+    if not data:
+        return jsonify({"error": "Request body must be JSON"}), 400
 
-    payload = {
-        "model": "gpt-4o-mini",
-        "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You are a supportive finance advisor for college students. "
-                    "Give practical, safe, non-judgmental budgeting advice in 3-5 concise sentences."
-                )
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"Student question: {prompt}\n"
-                    f"Current context JSON: {json.dumps(context)}"
-                )
-            }
-        ],
-        "temperature": 0.4
-    }
+    title = str(data.get("title", "")).strip()
+    category = str(data.get("category", "")).strip()
+    date = str(data.get("date", "")).strip()
+    amount = data.get("amount")
 
-    req = urllib.request.Request(
-        "https://api.openai.com/v1/chat/completions",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
-        },
-        method="POST"
-    )
+    if not title or not category or not date or amount is None:
+        return jsonify({"error": "Missing required fields"}), 400
 
     try:
-        with urllib.request.urlopen(req, timeout=20) as response:
-            body = json.loads(response.read().decode("utf-8"))
-            return body["choices"][0]["message"]["content"].strip()
-    except (urllib.error.URLError, KeyError, IndexError, json.JSONDecodeError):
-        return None
+        amount = float(amount)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Amount must be a valid number"}), 400
+
+    if amount <= 0:
+        return jsonify({"error": "Amount must be greater than 0"}), 400
+
+    conn = get_db_connection()
+    conn.execute(
+        "INSERT INTO expenses (title, amount, category, date) VALUES (?, ?, ?, ?)",
+        (title, amount, category, date)
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Expense added successfully"}), 201
 
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.get_json() or {}
-    prompt = str(data.get("prompt", "")).strip()
-    context = data.get("context", {})
+@app.route("/expenses", methods=["GET"])
+def get_expenses():
+    conn = get_db_connection()
+    expenses = conn.execute(
+        "SELECT * FROM expenses ORDER BY date DESC, id DESC"
+    ).fetchall()
+    conn.close()
 
-    if not prompt:
-        return jsonify({"error": "prompt is required"}), 400
+    return jsonify([dict(expense) for expense in expenses]), 200
 
-    if not isinstance(context, dict):
-        context = {}
 
-    reply = ask_openai(prompt, context)
+@app.route("/delete-expense/<int:expense_id>", methods=["DELETE"])
+def delete_expense(expense_id):
+    conn = get_db_connection()
 
-    if not reply:
-        reply = build_fallback_advice(prompt, context)
+    expense = conn.execute(
+        "SELECT * FROM expenses WHERE id = ?",
+        (expense_id,)
+    ).fetchone()
 
-    return jsonify({"reply": reply}), 200
+    if expense is None:
+        conn.close()
+        return jsonify({"error": "Expense not found"}), 404
+
+    conn.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": "Expense deleted successfully"}), 200
+
+
+@app.route("/set-budget", methods=["POST"])
+def set_budget():
+    data = request.get_json()
+
+    if not data or "monthly_budget" not in data:
+        return jsonify({"error": "monthly_budget is required"}), 400
+
+    try:
+        monthly_budget = float(data["monthly_budget"])
+    except (ValueError, TypeError):
+        return jsonify({"error": "monthly_budget must be a valid number"}), 400
+
+    if monthly_budget <= 0:
+        return jsonify({"error": "monthly_budget must be greater than 0"}), 400
+
+    conn = get_db_connection()
+    existing_budget = conn.execute(
+        "SELECT * FROM budget WHERE id = 1"
+    ).fetchone()
+
+    if existing_budget:
+        conn.execute(
+            "UPDATE budget SET monthly_budget = ? WHERE id = 1",
+            (monthly_budget,)
+        )
+    else:
+        conn.execute(
+            "INSERT INTO budget (id, monthly_budget) VALUES (1, ?)",
+            (monthly_budget,)
+        )
+
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "message": "Budget set successfully",
+        "monthly_budget": monthly_budget
+    }), 200
+
+
+@app.route("/budget", methods=["GET"])
+def get_budget():
+    conn = get_db_connection()
+    budget = conn.execute(
+        "SELECT monthly_budget FROM budget WHERE id = 1"
+    ).fetchone()
+    conn.close()
+
+    if budget is None:
+        return jsonify({"monthly_budget": None, "message": "No budget set yet"}), 200
+
+    return jsonify({"monthly_budget": budget["monthly_budget"]}), 200
+
+
+@app.route("/summary", methods=["GET"])
+def get_summary():
+    conn = get_db_connection()
+
+    total_result = conn.execute(
+        "SELECT SUM(amount) AS total FROM expenses"
+    ).fetchone()
+
+    category_result = conn.execute("""
+        SELECT category, SUM(amount) AS total
+        FROM expenses
+        GROUP BY category
+        ORDER BY total DESC
+    """).fetchall()
+
+    conn.close()
+
+    total_spent = total_result["total"] if total_result["total"] is not None else 0
+
+    by_category = [
+        {"category": row["category"], "total": row["total"]}
+        for row in category_result
+    ]
+
+    return jsonify({
+        "total_spent": total_spent,
+        "by_category": by_category
+    }), 200
+
+
+@app.route("/insights", methods=["GET"])
+def get_insights():
+    conn = get_db_connection()
+
+    total_result = conn.execute(
+        "SELECT SUM(amount) AS total FROM expenses"
+    ).fetchone()
+    total_spent = total_result["total"] if total_result["total"] is not None else 0
+
+    top_category_result = conn.execute("""
+        SELECT category, SUM(amount) AS total
+        FROM expenses
+        GROUP BY category
+        ORDER BY total DESC
+        LIMIT 1
+    """).fetchone()
+
+    budget_result = conn.execute(
+        "SELECT monthly_budget FROM budget WHERE id = 1"
+    ).fetchone()
+
+    conn.close()
+
+    monthly_budget = budget_result["monthly_budget"] if budget_result else None
+    remaining_budget = None
+    percent_used = None
+    budget_status = "no_budget"
+    recommendation = "Set a monthly budget to unlock smarter spending alerts."
+
+    if monthly_budget is not None and monthly_budget > 0:
+        remaining_budget = monthly_budget - total_spent
+        percent_used = round((total_spent / monthly_budget) * 100, 2)
+
+        if percent_used < 50:
+            budget_status = "healthy"
+            recommendation = "You are under control right now. Keep tracking your daily spending."
+        elif percent_used < 80:
+            budget_status = "watch"
+            recommendation = "You are doing okay, but keep an eye on your higher categories before the month ends."
+        elif percent_used <= 100:
+            budget_status = "warning"
+            recommendation = "You are getting close to your budget limit. Try cutting back on non-essential spending."
+        else:
+            budget_status = "overspent"
+            recommendation = "You have gone over budget. Focus on reducing flexible expenses like food, shopping, or entertainment."
+
+    top_category = None
+    top_category_total = 0
+    top_category_message = "No expenses recorded yet."
+
+    if top_category_result:
+        top_category = top_category_result["category"]
+        top_category_total = top_category_result["total"]
+        top_category_message = f"Your highest spending category is {top_category}."
+
+    return jsonify({
+        "total_spent": total_spent,
+        "monthly_budget": monthly_budget,
+        "remaining_budget": remaining_budget,
+        "percent_used": percent_used,
+        "budget_status": budget_status,
+        "top_category": top_category,
+        "top_category_total": top_category_total,
+        "top_category_message": top_category_message,
+        "recommendation": recommendation
+    }), 200
 
 
 if __name__ == "__main__":
