@@ -18,7 +18,6 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # expenses table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS expenses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +28,6 @@ def init_db():
         )
     """)
 
-    # budget table (just one row for now)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS budget (
             id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -53,18 +51,21 @@ def add_expense():
     if not data:
         return jsonify({"error": "Request body must be JSON"}), 400
 
-    title = data.get("title")
+    title = str(data.get("title", "")).strip()
+    category = str(data.get("category", "")).strip()
+    date = str(data.get("date", "")).strip()
     amount = data.get("amount")
-    category = data.get("category")
-    date = data.get("date")
 
-    if not title or amount is None or not category or not date:
+    if not title or not category or not date or amount is None:
         return jsonify({"error": "Missing required fields"}), 400
 
     try:
         amount = float(amount)
     except (ValueError, TypeError):
         return jsonify({"error": "Amount must be a valid number"}), 400
+
+    if amount <= 0:
+        return jsonify({"error": "Amount must be greater than 0"}), 400
 
     conn = get_db_connection()
     conn.execute(
@@ -120,8 +121,10 @@ def set_budget():
     except (ValueError, TypeError):
         return jsonify({"error": "monthly_budget must be a valid number"}), 400
 
-    conn = get_db_connection()
+    if monthly_budget <= 0:
+        return jsonify({"error": "monthly_budget must be greater than 0"}), 400
 
+    conn = get_db_connection()
     existing_budget = conn.execute(
         "SELECT * FROM budget WHERE id = 1"
     ).fetchone()
@@ -140,7 +143,10 @@ def set_budget():
     conn.commit()
     conn.close()
 
-    return jsonify({"message": "Budget set successfully", "monthly_budget": monthly_budget}), 200
+    return jsonify({
+        "message": "Budget set successfully",
+        "monthly_budget": monthly_budget
+    }), 200
 
 
 @app.route("/budget", methods=["GET"])
@@ -177,10 +183,7 @@ def get_summary():
     total_spent = total_result["total"] if total_result["total"] is not None else 0
 
     by_category = [
-        {
-            "category": row["category"],
-            "total": row["total"]
-        }
+        {"category": row["category"], "total": row["total"]}
         for row in category_result
     ]
 
@@ -194,13 +197,11 @@ def get_summary():
 def get_insights():
     conn = get_db_connection()
 
-    # total spent
     total_result = conn.execute(
         "SELECT SUM(amount) AS total FROM expenses"
     ).fetchone()
     total_spent = total_result["total"] if total_result["total"] is not None else 0
 
-    # top category
     top_category_result = conn.execute("""
         SELECT category, SUM(amount) AS total
         FROM expenses
@@ -209,7 +210,6 @@ def get_insights():
         LIMIT 1
     """).fetchone()
 
-    # budget
     budget_result = conn.execute(
         "SELECT monthly_budget FROM budget WHERE id = 1"
     ).fetchone()
@@ -263,5 +263,4 @@ def get_insights():
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True)
-n
+    app.run(host="0.0.0.0", port=5000, debug=False)
