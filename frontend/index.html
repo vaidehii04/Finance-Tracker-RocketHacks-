@@ -1,57 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spendly Roommate Tracker</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Spendly</title>
+
+<link rel="stylesheet" href="style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
 </head>
+
 <body>
 
-    <!-- Page 1: Roommates -->
-    <div class="container" id="page1">
-        <h1>Spendly</h1>
-        <h2>How many roommates?</h2>
-        <input type="number" id="roommate-count" min="1" placeholder="Enter number of roommates">
-        <button id="page1-next">Next</button>
-    </div>
+<!-- PAGE 1 -->
+<div class="page active" id="page1">
 
-    <!-- Page 2: Add Expenses -->
-    <div class="container hidden" id="page2">
-        <h2>Add Expenses</h2>
+<h1>Welcome to Spendly</h1>
 
-        <input type="text" id="expense-title" placeholder="Expense Category">
-        <input type="number" id="expense-amount" placeholder="Amount">
-        <input type="text" id="expense-date" placeholder="Date (MM/DD)">
-        <input type="text" id="paid-by" placeholder="Who paid? (Name)">
+<p class="subtitle">Smart roommate expense tracking</p>
 
-        <button id="add-expense">Add Expense</button>
+<button id="startBtn" class="main-btn">Let's Get Your Finances Right</button>
 
-        <ul id="expense-list"></ul>
+</div>
 
-        <button id="page2-next">Next</button>
-        <button id="back-to-page1">Back</button>
 
-        <!-- AI BOX -->
-        <div class="ai-box">
-            <h3>Spendly AI Assistant</h3>
-            <div id="chat-output"></div>
-            <input type="text" id="chat-input" placeholder="Ask about your expenses...">
-            <button id="chat-send">Ask AI</button>
-        </div>
-    </div>
+<!-- PAGE 2 -->
+<div class="page" id="page2">
 
-    <!-- Page 3: Summary -->
-    <div class="container hidden" id="page3">
-        <h2>Summary</h2>
-        <div id="summary-list"></div>
-        <div class="total" id="split-total"></div>
-        <canvas id="expenseChart"></canvas>
-        <button id="back-to-page2">Back</button>
-    </div>
+<button class="backBtn" onclick="goBack(1)">← Back</button>
 
-    <script src="script.js" defer></script>
+<h2>Number of Roommates</h2>
+
+<input type="number" id="roommateCount" placeholder="Enter number">
+
+<button class="main-btn" onclick="createRoommateInputs()">OK</button>
+
+<div id="roommateInputs"></div>
+
+<button id="roommateNext" class="main-btn hidden" onclick="goToExpenses()">Continue</button>
+
+</div>
+
+
+<!-- PAGE 3 -->
+<div class="page" id="page3">
+
+<button class="backBtn" onclick="goBack(2)">← Back</button>
+
+<h2>Add Expenses</h2>
+
+<div id="expenseContainer"></div>
+
+<button id="addExpenseBtn" class="plusBtn">+</button>
+
+<button class="main-btn" onclick="showSummary()">OK</button>
+
+</div>
+
+
+<!-- PAGE 4 -->
+<div class="page" id="page4">
+
+<button class="backBtn" onclick="goBack(3)">← Back</button>
+
+<h2>Summary</h2>
+
+<div id="summary"></div>
+
+<div id="splitResult"></div>
+
+<button class="main-btn" onclick="createChart()">Create Chart</button>
+
+<canvas id="expenseChart"></canvas>
+
+</div>
+
+
+<script src="script.js"></script>
+
 </body>
 </html>
